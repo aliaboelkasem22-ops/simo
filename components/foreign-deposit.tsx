@@ -13,6 +13,7 @@ type Config =
   | { kind: "card"; unit: string; min: number }
 
 const USD_TO_EGP = 50
+const RATE = 1.11
 const LOCK_SECONDS = 30 * 60
 
 // Replace every address and account below with your real receiving details before going live.
@@ -56,6 +57,7 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
   const config = CONFIG[method.name]
   const [step, setStep] = useState<"amount" | "pay" | "confirm" | "done">("amount")
   const [amount, setAmount] = useState("")
+  const [unit, setUnit] = useState<"usd" | "coins">("usd")
   const [networkId, setNetworkId] = useState(config.kind === "crypto" ? config.networks[0].id : "")
   const [seconds, setSeconds] = useState(LOCK_SECONDS)
   const [reference, setReference] = useState("")
@@ -64,9 +66,11 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
   const [requestId, setRequestId] = useState("")
 
   const network = config.kind === "crypto" ? config.networks.find((n) => n.id === networkId) ?? config.networks[0] : null
-  const value = Number(amount) || 0
+  const rawValue = Number(amount) || 0
   const fee = network?.fee ?? 0
-  const credited = Math.max(value - fee, 0) * USD_TO_EGP
+  const usdToCoins = (usd: number) => Math.floor((Math.max(usd - fee, 0) * USD_TO_EGP) / RATE + 1e-6)
+  const value = unit === "usd" ? rawValue : rawValue > 0 ? Math.ceil(((rawValue * RATE) / USD_TO_EGP + fee) * 100) / 100 : 0
+  const coins = usdToCoins(value)
   const valid = value >= config.min
   const expired = seconds <= 0
   const stepIndex = step === "amount" ? 0 : step === "pay" ? 1 : 2
@@ -84,6 +88,12 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
     } catch {
       notify("تعذر النسخ، انسخ يدويًا")
     }
+  }
+
+  const switchUnit = (next: "usd" | "coins") => {
+    if (next === unit) return
+    if (rawValue > 0) setAmount(String(next === "coins" ? coins : value))
+    setUnit(next)
   }
 
   const submit = () => {
@@ -129,7 +139,7 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
             </span>
             <div className="min-w-0">
               <p className="font-black">{method.name}</p>
-              <p className="text-sm text-[#697181]">الحد الأدنى {config.min} $ · 1 $ = {USD_TO_EGP} ج.م</p>
+              <p className="text-sm text-[#697181]">الحد الأدنى {config.min} $ · سعر العملة = {RATE} ج.م</p>
             </div>
           </div>
 
@@ -150,24 +160,43 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
               )}
 
               <section className="rounded-3xl bg-white p-4 shadow-sm">
-                <label htmlFor="fx-amount" className="mb-3 block text-sm font-black">المبلغ بالدولار</label>
+                <div className="mb-3 flex items-center justify-between">
+                  <div role="tablist" aria-label="وحدة المبلغ" className="flex rounded-full bg-[#f1f2f4] p-1">
+                    <button role="tab" aria-selected={unit === "usd"} onClick={() => switchUnit("usd")} className={`rounded-full px-4 py-1.5 text-sm font-bold ${unit === "usd" ? "bg-[#ff7614] text-white" : "text-[#6d7582]"}`}>دولار</button>
+                    <button role="tab" aria-selected={unit === "coins"} onClick={() => switchUnit("coins")} className={`rounded-full px-4 py-1.5 text-sm font-bold ${unit === "coins" ? "bg-[#ff7614] text-white" : "text-[#6d7582]"}`}>عملات</button>
+                  </div>
+                  <label htmlFor="fx-amount" className="text-sm font-black">{unit === "usd" ? "المبلغ بالدولار" : "المبلغ بالعملات"}</label>
+                </div>
                 <div className="flex items-center rounded-2xl border-2 border-[#e2e4e8] bg-[#f7f8fb] px-4 focus-within:border-[#ff7614]">
-                  <span className="text-xl font-black text-[#697181]">$</span>
-                  <input id="fx-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0.00" className="w-full bg-transparent px-3 py-4 text-2xl font-black outline-none" />
+                  <span className="text-xl font-black text-[#697181]">{unit === "usd" ? "$" : "◎"}</span>
+                  <input
+                    id="fx-amount"
+                    inputMode={unit === "usd" ? "decimal" : "numeric"}
+                    value={amount}
+                    onChange={(e) => setAmount(unit === "usd" ? e.target.value.replace(/[^0-9.]/g, "") : e.target.value.replace(/\D/g, "").slice(0, 7))}
+                    placeholder={unit === "usd" ? "0.00" : "عدد العملات"}
+                    className="w-full bg-transparent px-3 py-4 text-2xl font-black outline-none"
+                  />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {CHIPS.map((c) => (
-                    <button key={c} onClick={() => setAmount(String(c))} className={`rounded-full border px-4 py-2 text-sm font-bold ${Number(amount) === c ? "border-[#ff7614] bg-[#fff6ef] text-[#ff7614]" : "border-[#e2e4e8] bg-white"}`}>{c} $</button>
-                  ))}
+                  {CHIPS.map((c) => {
+                    const chipValue = unit === "usd" ? c : usdToCoins(c)
+                    return (
+                      <button key={c} onClick={() => setAmount(String(chipValue))} className={`rounded-full border px-4 py-2 text-sm font-bold ${Number(amount) === chipValue ? "border-[#ff7614] bg-[#fff6ef] text-[#ff7614]" : "border-[#e2e4e8] bg-white"}`}>
+                        {unit === "usd" ? `${c} $` : `${chipValue.toLocaleString("en-US")} عملة`}
+                      </button>
+                    )
+                  })}
                 </div>
-                {amount && !valid && <p className="mt-3 text-sm font-bold text-[#e5484d]">الحد الأدنى للإيداع {config.min} $</p>}
+                {amount && !valid && <p className="mt-3 text-sm font-bold text-[#e5484d]">الحد الأدنى للإيداع {config.min} $ (يعادل {usdToCoins(config.min).toLocaleString("en-US")} عملة)</p>}
+                <p className="mt-3 text-xs text-[#8a91a0]">سعر العملة الواحدة = {RATE} ج.م</p>
               </section>
 
               <section className="rounded-3xl bg-white p-4 shadow-sm">
-                <dl className="flex flex-col gap-3 text-sm">
-                  <div className="flex justify-between"><dt className="text-[#697181]">المبلغ</dt><dd className="font-bold">{value.toFixed(2)} $</dd></div>
+                <dl className="flex flex-col gap-3 text-sm" aria-live="polite">
+                  <div className="flex justify-between"><dt className="text-[#697181]">{unit === "usd" ? "المبلغ" : "ستدفع"}</dt><dd className="font-bold">{value.toFixed(2)} $</dd></div>
                   <div className="flex justify-between"><dt className="text-[#697181]">رسوم الشبكة</dt><dd className="font-bold">{fee.toFixed(2)} $</dd></div>
-                  <div className="flex justify-between border-t border-[#e8eaef] pt-3"><dt className="font-black">سيضاف إلى رصيدك</dt><dd className="text-lg font-black text-[#18a957]">{credited.toLocaleString("en-US", { maximumFractionDigits: 0 })} ج.م</dd></div>
+                  <div className="flex justify-between border-t border-[#e8eaef] pt-3"><dt className="font-black">سيضاف إلى رصيدك</dt><dd className="text-lg font-black text-[#18a957]">{coins.toLocaleString("en-US")} عملة</dd></div>
                 </dl>
               </section>
 
@@ -278,7 +307,7 @@ export function ForeignDeposit({ method, close, back, notify }: { method: Foreig
                 <div className="flex justify-between"><dt className="text-[#697181]">رقم الطلب</dt><dd className="font-mono font-bold">{requestId}</dd></div>
                 <div className="flex justify-between"><dt className="text-[#697181]">الوسيلة</dt><dd className="font-bold">{method.name}</dd></div>
                 <div className="flex justify-between"><dt className="text-[#697181]">المبلغ</dt><dd className="font-bold">{value.toFixed(2)} $</dd></div>
-                <div className="flex justify-between"><dt className="text-[#697181]">الرصيد المتوقع</dt><dd className="font-bold text-[#18a957]">{credited.toLocaleString("en-US", { maximumFractionDigits: 0 })} ج.م</dd></div>
+                <div className="flex justify-between"><dt className="text-[#697181]">الرصيد المتوقع</dt><dd className="font-bold text-[#18a957]">{coins.toLocaleString("en-US")} عملة</dd></div>
                 <div className="flex justify-between"><dt className="text-[#697181]">الحالة</dt><dd className="rounded-full bg-[#fff6ef] px-3 py-1 text-xs font-black text-[#c2570c]">قيد المراجعة</dd></div>
               </dl>
               <button onClick={close} className="mt-2 w-full rounded-2xl bg-gradient-to-l from-[#f83f4d] to-[#ff7614] py-4 text-lg font-black text-white shadow-lg">العودة إلى المحفظة</button>
