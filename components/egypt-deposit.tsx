@@ -6,6 +6,7 @@ import { Check, ChevronRight, Copy, Tag } from "lucide-react"
 const MIN = 97
 const MAX = 59000
 const CHIPS = [97, 150, 300, 500]
+const RATE = 1.11
 
 // Replace these with your real receiving wallets and Instapay address before going live.
 const RECEIVING: Record<string, { label: string; value: string }> = {
@@ -19,7 +20,10 @@ const RECEIVING: Record<string, { label: string; value: string }> = {
   Instapay: { label: "عنوان انستاباي", value: "skillwin@instapay" },
 }
 
-const money = (n: number) => `E£${n.toLocaleString("en-US")}`
+const money = (n: number) => `E£${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`
+const coinsLabel = (n: number) => `${n.toLocaleString("en-US")} عملة`
+const toEgp = (coins: number) => Math.round(coins * RATE * 100) / 100
+const toCoins = (egp: number) => Math.floor(egp / RATE)
 
 type Props = {
   name: string
@@ -46,9 +50,17 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
 
   const value = Number(amount) || 0
   const senderValid = isInstapay ? sender.trim().length >= 3 : /^01[0125]\d{8}$/.test(sender)
-  const amountValid = value >= MIN && value <= MAX
+  const egp = unit === "egp" ? value : toEgp(value)
+  const coins = unit === "coins" ? value : toCoins(value)
+  const amountValid = egp >= MIN && egp <= MAX
   const canContinue = senderValid && amountValid
   const referenceValid = reference.trim().length >= 6
+
+  const switchUnit = (next: "egp" | "coins") => {
+    if (next === unit) return
+    if (value > 0) setAmount(String(next === "coins" ? toCoins(value) : Math.ceil(value * RATE)))
+    setUnit(next)
+  }
 
   const copy = async (text: string, label: string) => {
     try {
@@ -114,8 +126,8 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
               <section className="mt-6 rounded-[34px] border-2 border-[#e2e4e8] bg-white px-6 py-6">
                 <div className="flex items-center justify-between">
                   <div role="tablist" aria-label="وحدة المبلغ" className="flex rounded-full bg-[#f1f2f4] p-1.5">
-                    <button role="tab" aria-selected={unit === "egp"} onClick={() => setUnit("egp")} className={`rounded-full px-6 py-3 text-xl font-bold ${unit === "egp" ? "bg-[#20ca5d] text-white" : "text-[#6d7582]"}`}>جنيه</button>
-                    <button role="tab" aria-selected={unit === "coins"} onClick={() => setUnit("coins")} className={`rounded-full px-6 py-3 text-xl font-bold ${unit === "coins" ? "bg-[#20ca5d] text-white" : "text-[#6d7582]"}`}>عملات</button>
+                    <button role="tab" aria-selected={unit === "egp"} onClick={() => switchUnit("egp")} className={`rounded-full px-6 py-3 text-xl font-bold ${unit === "egp" ? "bg-[#20ca5d] text-white" : "text-[#6d7582]"}`}>جنيه</button>
+                    <button role="tab" aria-selected={unit === "coins"} onClick={() => switchUnit("coins")} className={`rounded-full px-6 py-3 text-xl font-bold ${unit === "coins" ? "bg-[#20ca5d] text-white" : "text-[#6d7582]"}`}>عملات</button>
                   </div>
                   <label htmlFor="amount" className="text-2xl font-medium text-[#3a4252]">{unit === "egp" ? "المبلغ بالجنيه" : "المبلغ بالعملات"}</label>
                 </div>
@@ -134,15 +146,24 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
                 <p className={`mt-3 text-lg ${amount.length > 0 && !amountValid ? "text-[#e5484d]" : "text-[#8a91a0]"}`}>
                   الحد الأدنى {money(MIN)} - الأقصى {money(MAX)}
                 </p>
-                {unit === "coins" && <p className="mt-1 text-base text-[#8a91a0]">كل 1 جنيه = 1 عملة</p>}
+                <p className="mt-1 text-base text-[#8a91a0]">سعر العملة الواحدة = {money(RATE)}</p>
+                {value > 0 && (
+                  <div className="mt-4 flex items-center justify-between rounded-[22px] bg-[#e6f9ed] px-5 py-4 text-xl font-bold text-[#15803d]" aria-live="polite">
+                    <span>{unit === "egp" ? "ستحصل على" : "ستدفع"}</span>
+                    <span>{unit === "egp" ? coinsLabel(coins) : money(egp)}</span>
+                  </div>
+                )}
               </section>
 
               <div className="mt-6 grid grid-cols-4 gap-3">
-                {CHIPS.slice().reverse().map((chip) => (
-                  <button key={chip} onClick={() => setAmount(String(chip))} className={`h-[78px] rounded-[22px] border-2 bg-white text-2xl font-black ${value === chip ? "border-[#20ca5d] text-[#16a34a]" : "border-[#e2e4e8]"}`}>
-                    {money(chip)}
-                  </button>
-                ))}
+                {CHIPS.slice().reverse().map((chip) => {
+                  const chipValue = unit === "egp" ? chip : Math.ceil(chip / RATE)
+                  return (
+                    <button key={chip} onClick={() => setAmount(String(chipValue))} className={`h-[78px] rounded-[22px] border-2 bg-white text-2xl font-black ${value === chipValue ? "border-[#20ca5d] text-[#16a34a]" : "border-[#e2e4e8]"}`}>
+                      {unit === "egp" ? money(chip) : chipValue}
+                    </button>
+                  )
+                })}
               </div>
 
               <div className="mt-8">
@@ -169,7 +190,8 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
           {step === "pay" && (
             <section className="rounded-[34px] border-2 border-[#e2e4e8] bg-white px-6 py-6">
               <p className="text-2xl font-bold">حوّل المبلغ التالي</p>
-              <p className="mt-2 text-5xl font-black text-[#16a34a]">{money(value)}</p>
+              <p className="mt-2 text-5xl font-black text-[#16a34a]">{money(egp)}</p>
+              <p className="mt-2 text-xl font-bold text-[#3a4252]">مقابل {coinsLabel(coins)} (سعر العملة {money(RATE)})</p>
 
               <div className="mt-6 rounded-[22px] bg-[#f7f8fb] p-5">
                 <p className="text-lg text-[#697181]">{receiving.label}</p>
@@ -183,7 +205,7 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
 
               <ol className="mt-6 space-y-3 text-xl text-[#3a4252]">
                 <li>1. افتح {isInstapay ? "تطبيق انستاباي" : `محفظة ${name}`} من حسابك المسجل ({sender}).</li>
-                <li>2. حوّل مبلغ {money(value)} بالضبط إلى {isInstapay ? "العنوان" : "الرقم"} أعلاه.</li>
+                <li>2. حوّل مبلغ {money(egp)} بالضبط إلى {isInstapay ? "العنوان" : "الرقم"} أعلاه.</li>
                 <li>3. انسخ رقم العملية من رسالة التأكيد وأدخله بالأسفل.</li>
               </ol>
 
@@ -203,7 +225,7 @@ export function EgyptDeposit({ name, logo, nav, close, back, notify }: Props) {
             <section className="rounded-[34px] border-2 border-[#e2e4e8] bg-white px-6 py-10 text-center">
               <span className="mx-auto flex size-20 items-center justify-center rounded-full bg-[#e6f9ed] text-[#16a34a]"><Check className="size-10" aria-hidden="true" /></span>
               <h3 className="mt-5 text-3xl font-black">تم استلام طلب الإيداع</h3>
-              <p className="mt-3 text-xl text-[#697181]">سيتم مراجعة التحويل وإضافة {money(value)} إلى رصيدك خلال دقائق.</p>
+              <p className="mt-3 text-xl text-[#697181]">سيتم مراجعة التحويل وشحن {coinsLabel(coins)} في رصيدك خلال دقائق.</p>
               <p className="mt-6 text-lg text-[#697181]">رقم الطلب</p>
               <p dir="ltr" className="text-2xl font-black">{requestId}</p>
             </section>
