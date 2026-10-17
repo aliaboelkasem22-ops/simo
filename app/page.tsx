@@ -1,67 +1,83 @@
 "use client"
 
 import { useState } from "react"
+import { ArrowDownLeft, Bell, ChevronLeft, CircleDollarSign, Home, Plus, RefreshCw, ReceiptText, Trophy, User, Wallet } from "lucide-react"
 
-type Screen = "home" | "games" | "rewards" | "activity" | "profile"
+type Tab = "home" | "wallet" | "alerts" | "competitions" | "finance" | "account"
 
-const games = [
-  { title: "اختبار الذكاء", subtitle: "10 أسئلة يومية", color: "from-fuchsia-500 to-violet-600", icon: "IQ" },
-  { title: "تحدي السرعة", subtitle: "أجب قبل انتهاء الوقت", color: "from-cyan-400 to-blue-600", icon: "TIME" },
-  { title: "حافظ على التركيز", subtitle: "اختبر قوة ملاحظتك", color: "from-amber-300 to-orange-500", icon: "FOCUS" },
+const nav = [
+  { id: "account" as Tab, label: "حسابي", icon: User },
+  { id: "wallet" as Tab, label: "المحفظة", icon: Wallet },
+  { id: "alerts" as Tab, label: "الإشعارات", icon: Bell },
+  { id: "competitions" as Tab, label: "المسابقات", icon: Trophy },
+  { id: "finance" as Tab, label: "المالية و النسخ", icon: ReceiptText },
+  { id: "home" as Tab, label: "الرئيسية", icon: Home },
 ]
 
-const navItems: { id: Screen; label: string }[] = [
-  { id: "home", label: "الرئيسية" },
-  { id: "games", label: "الألعاب" },
-  { id: "rewards", label: "المكافآت" },
-  { id: "activity", label: "النشاط" },
-  { id: "profile", label: "حسابي" },
-]
+export default function Page() {
+  const [tab, setTab] = useState<Tab>("home")
+  const [balance, setBalance] = useState(0)
+  const [notice, setNotice] = useState("")
 
-function Header({ onProfile }: { onProfile: () => void }) {
+  const action = (message: string) => {
+    setNotice(message)
+    window.setTimeout(() => setNotice(""), 2200)
+  }
+
   return (
-    <header className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-      <button onClick={onProfile} className="flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-sm font-black" aria-label="فتح الحساب">م</button>
-      <div className="flex items-center gap-2">
-        <span className="text-xl font-black tracking-tight text-transparent [background:linear-gradient(120deg,#ff32be,#9f2cff_55%,#593dff)] bg-clip-text">SkillWin</span>
-        <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff2cbe] to-[#6234ff] text-sm font-black italic">S</span>
+    <main dir="rtl" className="min-h-screen bg-[#080809] text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col bg-[#09090a] pb-24">
+        <header className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+          <button aria-label="فتح الحساب" onClick={() => setTab("account")} className="flex size-12 items-center justify-center rounded-2xl bg-[#ee3037] text-2xl font-black shadow-[0_8px_24px_rgba(238,48,55,.22)]">S</button>
+          <div className="flex items-center gap-3">
+            <div className="text-right leading-tight"><p className="text-sm text-white/50">مرحباً</p><p className="font-black">محمد</p></div>
+            <span className="size-3 rounded-full bg-[#20cf61]" />
+          </div>
+        </header>
+
+        {tab === "home" ? (
+          <>
+            <section className="border-b border-white/[0.06] px-4 py-5">
+              <div className="flex gap-3">
+                <button onClick={() => action("تم طلب السحب")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#ef3941]/40 bg-[#321113] py-3 text-lg font-bold text-[#ff676d]"><ArrowDownLeft /> سحب</button>
+                <button onClick={() => action("تم فتح صفحة الإيداع")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#20ca5d] py-3 text-lg font-bold shadow-[0_8px_25px_rgba(32,202,93,.2)]"><Plus /> إيداع</button>
+                <div className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#8c5b06] bg-[#291f0c] text-[#ffc21c]"><CircleDollarSign /><span><small className="block text-xs text-white/45">الرصيد</small><b className="text-xl">{balance}</b></span></div>
+              </div>
+            </section>
+
+            <section className="px-5 pb-8 pt-16 text-center">
+              <p className="text-2xl text-white/45">رصيدك</p><p className="mt-5 text-7xl font-black">{balance}</p><p className="mt-2 text-3xl text-white/45">عملة</p><p className="mt-5 text-xl text-white/45">ج.م <span className="text-[#20cf61]">{balance}</span></p>
+              <div className="mt-14 grid grid-cols-3 gap-5">
+                <button onClick={() => action("لا يوجد رصيد للسحب")} className="flex flex-col items-center gap-4 text-xl font-bold"><span className="flex size-32 items-center justify-center rounded-full border-2 border-[#6c2429] bg-[#210d0f] text-5xl text-[#fb4b52]"><ArrowDownLeft /></span>سحب</button>
+                <button onClick={() => setBalance(0)} className="flex flex-col items-center gap-4 text-xl font-bold"><span className="flex size-32 items-center justify-center rounded-full bg-[#222225] text-5xl text-white/50"><RefreshCw /></span>تحديث</button>
+                <button onClick={() => { setBalance(400); action("تم تحديث رصيدك") }} className="flex flex-col items-center gap-4 text-xl font-bold"><span className="flex size-32 items-center justify-center rounded-full bg-[#20ca5d] text-6xl shadow-[0_12px_35px_rgba(32,202,93,.25)]"><Plus /></span>إيداع</button>
+              </div>
+            </section>
+
+            <section className="mx-5 grid grid-cols-2 divide-x divide-white/10 rounded-3xl bg-[#161617] py-6 text-center">
+              <div><b className="text-3xl">0</b><p className="mt-2 text-white/40">إحالات</p></div><div><b className="text-3xl">0</b><p className="mt-2 text-white/40">لعب</p></div>
+            </section>
+
+            <button onClick={() => setTab("competitions")} className="mx-5 mt-8 rounded-[30px] bg-gradient-to-br from-[#ffab0b] to-[#ff6b0b] p-7 text-right shadow-[0_14px_35px_rgba(255,134,12,.16)]">
+              <div className="flex items-center gap-5"><span className="flex size-20 items-center justify-center rounded-3xl bg-white/20 text-5xl"><Trophy /></span><span><strong className="block text-4xl font-black">العب واكسب</strong><small className="text-xl">اربح 400 عملة في دقائق</small></span></div>
+              <div className="mt-7 grid grid-cols-2 gap-4"><div className="rounded-2xl bg-white/20 p-4 text-center"><p>الجائزة</p><b className="text-3xl">400</b></div><div className="rounded-2xl bg-black/15 p-4 text-center"><p>الرسوم</p><b className="text-3xl">250</b></div></div>
+              <div className="mt-5 rounded-2xl bg-[#ffd39a] px-5 py-4 text-center text-xl font-black text-[#d66e08]">اشحن رصيدك أولاً <ChevronLeft className="inline" /></div>
+            </button>
+          </>
+        ) : <Inner tab={tab} action={action} />}
       </div>
-    </header>
+      {notice && <div className="fixed bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-xl">{notice}</div>}
+      <nav className="fixed bottom-0 left-1/2 z-10 grid w-full max-w-[520px] -translate-x-1/2 grid-cols-6 border-t border-white/[0.08] bg-[#101011]/95 px-2 py-3 backdrop-blur-xl">
+        {nav.map(({ id, label, icon: Icon }) => <button key={id} onClick={() => setTab(id)} className={`flex flex-col items-center gap-2 rounded-2xl py-2 text-[11px] transition ${tab === id ? "bg-[#321113] font-bold text-[#ff4b52]" : "text-white/45"}`}><Icon className="size-7" />{label}</button>)}
+      </nav>
+    </main>
   )
 }
 
-function Home({ go }: { go: (screen: Screen) => void; onPlay: (game: typeof games[number]) => void }) {
-  return <section className="flex min-h-[calc(100vh-138px)] flex-col items-center justify-center px-6 py-12 text-center">
-    <div className="relative flex size-32 items-center justify-center rounded-[2.25rem] bg-gradient-to-br from-[#ff32be] via-[#9f2cff] to-[#593dff] shadow-[0_20px_70px_rgba(159,44,255,0.42)]">
-      <span className="text-7xl font-black italic text-white drop-shadow-lg">S</span>
-    </div>
-    <h1 className="mt-7 text-4xl font-black tracking-tight text-transparent [background:linear-gradient(120deg,#ff32be,#9f2cff_55%,#593dff)] bg-clip-text">SkillWin</h1>
-    <p className="mt-3 text-2xl font-bold text-white">العب واكسب</p>
-    <p className="mt-5 max-w-xs text-sm leading-7 text-white/65">&quot;النجاح ليس نهاية الطريق، الفشل ليس قاتلاً&quot;</p>
-    <button onClick={() => go("games")} className="mt-8 rounded-xl bg-gradient-to-l from-fuchsia-500 to-violet-600 px-8 py-3 text-sm font-bold shadow-lg shadow-fuchsia-900/30">الدخول إلى المنصة</button>
-    <div className="mt-10 flex flex-col gap-1 text-[10px] text-white/35">
-      <span>v1.9.3</span>
-      <span>Licensed by Cyprus Securities and Exchange Commission (CySEC) — 2023</span>
-      <span>Release License — SkillWin Platform 2026</span>
-    </div>
-  </section>
-}
-
-function GameCard({ game, onPlay }: { game: typeof games[number]; onPlay: (game: typeof games[number]) => void }) {
-  return <button onClick={() => onPlay(game)} className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-right transition hover:-translate-y-0.5 hover:border-fuchsia-400/50 hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-400"><span className={`flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${game.color} text-[9px] font-black text-white shadow-lg`}>{game.icon}</span><span className="flex-1"><strong className="block text-sm">{game.title}</strong><small className="mt-1 block text-xs text-white/50">{game.subtitle}</small></span><span className="rounded-lg bg-white/10 px-2 py-1 text-xs text-white/70 transition group-hover:bg-fuchsia-400/20 group-hover:text-fuchsia-200">ابدأ ←</span></button>
-}
-
-function Games({ onPlay }: { onPlay: (game: typeof games[number]) => void }) { return <div className="flex flex-col gap-5 px-5 py-6"><div><h2 className="text-2xl font-black">اختر لعبتك</h2><p className="mt-2 text-sm text-white/55">كل إجابة صحيحة تقربك من جائزتك القادمة.</p></div><div className="flex flex-col gap-3">{games.map((game) => <GameCard key={game.title} game={game} onPlay={onPlay} />)}</div><div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm leading-7 text-cyan-100">تحدي اليوم متاح الآن. العب مرة واحدة يومياً لتحصل على نقاط إضافية.</div></div> }
-
-function Rewards() { return <div className="flex flex-col gap-5 px-5 py-6"><div><h2 className="text-2xl font-black">المكافآت</h2><p className="mt-2 text-sm text-white/55">استبدل نقاطك بمكافآت مميزة.</p></div><div className="rounded-3xl bg-gradient-to-l from-fuchsia-600 to-violet-700 p-5"><p className="text-sm text-white/75">نقاطك الحالية</p><p className="mt-2 text-4xl font-black">2,450</p><div className="mt-5 h-2 rounded-full bg-black/20"><div className="h-full w-3/4 rounded-full bg-white" /></div><p className="mt-2 text-xs text-white/70">550 نقطة للوصول إلى المكافأة التالية</p></div>{["بطاقة شراء 100 جنيه", "اشتراك VIP لمدة شهر", "كوبون خصم 25%"].map((reward, i) => <div key={reward} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.045] p-4"><span className="flex size-12 items-center justify-center rounded-xl bg-amber-400/15 text-xs font-black text-amber-300">{i === 0 ? "EGP" : "VIP"}</span><span className="flex-1"><strong className="block text-sm">{reward}</strong><small className="text-white/45">{[2000, 5000, 3500][i]} نقطة</small></span><button className="rounded-lg bg-white/10 px-3 py-2 text-xs">استبدال</button></div>)}</div> }
-
-function Activity() { return <div className="flex flex-col gap-5 px-5 py-6"><h2 className="text-2xl font-black">سجل النشاط</h2><div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5"><p className="text-sm text-white/55">إنجازات هذا الأسبوع</p><div className="mt-5 flex items-end justify-between gap-2">{[35, 60, 42, 80, 55, 75, 92].map((height, i) => <div key={i} className="flex flex-1 flex-col items-center gap-2"><div style={{ height: `${height}px` }} className="w-full rounded-t-lg bg-gradient-to-t from-violet-700 to-fuchsia-400" /><small className="text-[10px] text-white/40">{["س","ح","ن","ث","ر","خ","ج"][i]}</small></div>)}</div></div>{["أكملت اختبار الذكاء", "حصلت على مكافأة يومية", "دخلت تحدي السرعة"].map((item, i) => <div key={item} className="flex items-center gap-3 border-b border-white/10 pb-4"><span className="flex size-9 items-center justify-center rounded-full bg-emerald-400/15 text-xs text-emerald-300">✓</span><span className="flex-1 text-sm">{item}<small className="mt-1 block text-xs text-white/40">منذ {i + 1} ساعة</small></span><b className="text-sm text-fuchsia-300">+{[120, 50, 80][i]}</b></div>)}</div> }
-
-function Profile() { return <div className="flex flex-col gap-5 px-5 py-6"><div className="flex flex-col items-center rounded-3xl border border-white/10 bg-white/[0.045] p-6"><div className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 text-2xl font-black">م</div><h2 className="mt-4 text-xl font-black">محمد أحمد</h2><p className="mt-1 text-sm text-white/50">عضو منذ مارس 2026</p></div>{["تعديل الملف الشخصي", "الإشعارات", "اللغة والمظهر", "مركز المساعدة"].map((item) => <button key={item} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-right text-sm"><span>{item}</span><span className="text-white/35">←</span></button>)}</div> }
-
-export default function Page() {
-  const [screen, setScreen] = useState<Screen>("home")
-  const [activeGame, setActiveGame] = useState<typeof games[number] | null>(null)
-  const content = screen === "home" ? <Home go={setScreen} onPlay={setActiveGame} /> : screen === "games" ? <Games onPlay={setActiveGame} /> : screen === "rewards" ? <Rewards /> : screen === "activity" ? <Activity /> : <Profile />
-  return <main dir="rtl" className="min-h-screen bg-[#090017] text-white"><div className="mx-auto min-h-screen w-full max-w-md bg-[radial-gradient(circle_at_50%_0%,rgba(89,35,151,0.28),transparent_35%),linear-gradient(180deg,#100022_0%,#07000f_100%)]">{screen !== "home" && <Header onProfile={() => setScreen("profile")} />}<div className={screen === "home" ? "min-h-screen" : "min-h-[calc(100vh-138px)]"}>{content}</div>{screen !== "home" && <nav className="sticky bottom-0 grid grid-cols-5 border-t border-white/10 bg-[#100022]/95 px-2 py-3 backdrop-blur-xl">{navItems.map((item) => <button key={item.id} onClick={() => setScreen(item.id)} className={`flex flex-col items-center gap-1 text-[11px] transition ${screen === item.id ? "font-bold text-fuchsia-300" : "text-white/45"}`}><span className="text-lg">{item.id === "home" ? "⌂" : item.id === "games" ? "◇" : item.id === "rewards" ? "◆" : item.id === "activity" ? "◒" : "○"}</span>{item.label}</button>)}</nav>}{activeGame && <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm"><section className="w-full max-w-md rounded-3xl border border-fuchsia-400/30 bg-[#18002f] p-5 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="game-title"><div className={`flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${activeGame.color} text-xs font-black`}>{activeGame.icon}</div><h2 id="game-title" className="mt-4 text-xl font-black">{activeGame.title}</h2><p className="mt-2 text-sm leading-7 text-white/60">أنت على وشك بدء تحدٍ جديد. هل أنت مستعد لجمع المزيد من النقاط؟</p><div className="mt-5 flex gap-3"><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-white/70">ليس الآن</button><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl bg-gradient-to-l from-fuchsia-500 to-violet-600 px-4 py-3 text-sm font-bold shadow-lg shadow-fuchsia-900/30">ابدأ التحدي</button></div></section></div>}</div></main>
+function Inner({ tab, action }: { tab: Tab; action: (message: string) => void }) {
+  const content: Record<Tab, { title: string; body: string }> = {
+    home: { title: "الرئيسية", body: "" }, wallet: { title: "المحفظة", body: "تابع رصيدك وعمليات الإيداع والسحب من هنا." }, alerts: { title: "الإشعارات", body: "لا توجد إشعارات جديدة حالياً." }, competitions: { title: "المسابقات", body: "اختر مسابقة وابدأ اللعب واربح العملات." }, finance: { title: "المالية و النسخ", body: "كل تقاريرك وحركاتك المالية في مكان واحد." }, account: { title: "حسابي", body: "محمد أحمد\nعضو منذ مارس 2026" },
+  }
+  const item = content[tab]
+  return <section className="flex flex-1 flex-col px-5 pt-12"><h1 className="text-4xl font-black">{item.title}</h1><div className="mt-8 whitespace-pre-line rounded-3xl border border-white/10 bg-[#161617] p-6 text-lg leading-9 text-white/60">{item.body}</div><button onClick={() => action("تم تنفيذ الإجراء")} className="mt-6 rounded-2xl bg-[#20ca5d] px-5 py-4 text-lg font-bold">ابدأ الآن</button></section>
 }
