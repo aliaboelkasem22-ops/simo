@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { ForeignDeposit, type ForeignMethod } from "@/components/foreign-deposit"
 import { EgyptDeposit } from "@/components/egypt-deposit"
 import { ArrowDownLeft, Bell, ChevronLeft, CircleDollarSign, Home, LogOut, Plus, RefreshCw, ReceiptText, Settings, Trophy, User, Wallet, X } from "lucide-react"
@@ -27,10 +27,10 @@ export default function Page() {
   const [toast, setToast] = useState("")
   const [code, setCode] = useState("")
 
-  useEffect(() => { const timer = setTimeout(() => setIntro(false), 1800); return () => clearTimeout(timer) }, [])
+  const finishIntro = useCallback(() => setIntro(false), [])
   const notify = (message: string) => { setToast(message); setTimeout(() => setToast(""), 2200) }
 
-  if (intro) return <Splash />
+  if (intro) return <Splash onDone={finishIntro} />
   if (screen === "landing") return <Landing setScreen={setScreen} notify={notify} />
   if (screen === "auth" || screen === "login" || screen === "quick") return <Auth screen={screen} setScreen={setScreen} />
   if (screen === "forgot") return <Forgot setScreen={setScreen} />
@@ -42,7 +42,52 @@ export default function Page() {
   </div><BottomNav tab={tab} setTab={setTab} />{toast && <div className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-white px-5 py-3 text-sm font-bold text-black shadow-2xl">{toast}</div>}{modal && <ActionModal type={modal} balance={balance} setBalance={setBalance} close={() => setModal(null)} notify={notify} />}</main>
 }
 
-function Splash() { return <main dir="rtl" className="flex min-h-screen items-center justify-center bg-[#080809] text-white"><section className="flex min-h-screen w-full max-w-[520px] flex-col items-center justify-center text-center"><div className="mb-36 flex size-28 flex-col items-center justify-center rounded-full border-[6px] border-[#1386d0] text-[#ff7b13] shadow-[0_0_30px_rgba(19,134,208,.2)]"><b className="text-7xl leading-none">?</b><span className="text-sm font-black text-[#1386d0]">SKILL WIN</span></div><h1 className="text-4xl font-black">SkillWin</h1><p className="mt-3 text-xl text-white/45">العب واكسب</p><p className="mt-16 text-xl text-white/50">&quot;النجاح ليس نهاية الطريق، الفشل ليس قاتلاً&quot;</p><div className="mt-20 flex gap-5"><i className="size-4 rounded-full border-2 border-white/20"/><i className="size-4 rounded-full border-2 border-white/20"/><i className="size-4 rounded-full border-2 border-white/20"/><i className="size-4 rounded-full border-2 border-[#816d2e]"/><i className="size-7 rounded-full bg-[#ffc329] shadow-[0_0_22px_#ffc329]"/></div><b className="mt-14 text-[#d8ac18]">v1.9.3</b></section></main> }
+const SPLASH_STEPS = 5
+
+function Splash({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState(0)
+
+  useEffect(() => {
+    if (step >= SPLASH_STEPS) {
+      const finish = setTimeout(onDone, 600)
+      return () => clearTimeout(finish)
+    }
+    const next = setTimeout(() => setStep((value) => value + 1), step === 0 ? 500 : 750)
+    return () => clearTimeout(next)
+  }, [step, onDone])
+
+  const reveal = (from: number) => `transition-all duration-700 ${step >= from ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`
+
+  return (
+    <main dir="ltr" className="flex min-h-screen items-center justify-center bg-[#080809] text-white">
+      <section className="flex min-h-screen w-full max-w-[520px] flex-col items-center justify-center px-6 text-center">
+        <div className="mb-24 flex size-28 flex-col items-center justify-center rounded-full border-[6px] border-[#1386d0] text-[#ff7b13] shadow-[0_0_30px_rgba(19,134,208,.2)]">
+          <b className="text-7xl leading-none">?</b>
+          <span className="text-sm font-black text-[#1386d0]">SKILL WIN</span>
+        </div>
+        <h1 className={`text-4xl font-black ${reveal(1)}`}>SkillWin</h1>
+        <p className={`mt-3 text-xl text-white/45 ${reveal(2)}`}>Play &amp; Win</p>
+        <div className="mt-14 min-h-20 text-xl text-white/50">
+          <p className={reveal(3)}>&quot;Success is not the end of the road,</p>
+          <p className={`mt-1 ${reveal(4)}`}>failure is not fatal&quot;</p>
+        </div>
+        <div className="mt-16 flex items-center gap-5" role="progressbar" aria-label="Loading" aria-valuemin={0} aria-valuemax={SPLASH_STEPS} aria-valuenow={Math.min(step, SPLASH_STEPS)}>
+          {Array.from({ length: SPLASH_STEPS }).map((_, index) => {
+            const done = step > index
+            const current = step === index
+            return (
+              <i
+                key={index}
+                className={`rounded-full transition-all duration-500 ${done ? "size-4 bg-[#ffc329] shadow-[0_0_22px_#ffc329]" : current ? "size-4 border-2 border-[#816d2e]" : "size-4 border-2 border-white/20"}`}
+              />
+            )
+          })}
+        </div>
+        <b className="mt-14 text-[#d8ac18]">v1.9.3</b>
+      </section>
+    </main>
+  )
+}
 
 function Landing({ setScreen, notify }: { setScreen: (s: Screen) => void; notify: (m: string) => void }) { return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col items-center px-6 py-7 text-center"><button onClick={() => notify("تم تبديل المظهر")} aria-label="تبديل المظهر" className="self-start rounded-full p-2 text-xl text-white/45">☼</button><div className="mt-8 flex size-28 flex-col items-center justify-center rounded-full border-[6px] border-[#1386d0] text-[#ff7b13] shadow-[0_0_24px_rgba(19,134,208,.16)]"><b className="text-7xl leading-none">?</b><span className="text-sm font-black text-[#1386d0]">SKILL WIN</span></div><h1 className="mt-8 text-4xl font-black">SkillWin</h1><h2 className="mt-3 text-2xl font-black">العب واكسب</h2><p className="mt-2 text-sm text-white/45">اختبر معلوماتك واربح جوائز حقيقية</p><div className="mt-10 grid w-full grid-cols-3 divide-x divide-white/10 rounded-2xl bg-[#151516] px-3 py-4"><div><b className="text-2xl text-white">10</b><p className="text-xs text-white/45">اسئلة</p></div><div><b className="text-2xl text-[#ff9d18]">10s</b><p className="text-xs text-white/45">لكل سؤال</p></div><div><b className="text-2xl text-[#20ca5d]">400</b><p className="text-xs text-white/45">جائزة</p></div></div><div className="mt-7 w-full rounded-2xl border border-white/[.08] bg-[#151516] px-4 py-3 text-sm text-white/50"><p>نظام دفع آلي ومؤمن 100%</p><div className="mt-2 flex justify-center gap-5 text-xs"><span><i className="mr-1 inline-block size-2 rounded-full bg-[#20ca5d]"/>إيداع فوري</span><span><i className="mr-1 inline-block size-2 rounded-full bg-[#d89b20]"/>سحب آلي</span></div></div><div className="mt-auto flex w-full flex-col gap-3 pt-7"><button onClick={() => setScreen("auth")} className="rounded-2xl bg-[#ff9d18] py-4 text-lg font-black text-black shadow-[0_8px_28px_rgba(255,157,24,.16)]">انشاء حساب جديد</button><button onClick={() => setScreen("login")} className="rounded-2xl border border-white/10 py-4 font-bold text-white/80">عندي حساب</button></div></section></main> }
 
