@@ -30,21 +30,21 @@ function Header({ onProfile }: { onProfile: () => void }) {
   )
 }
 
-function Home({ go, onPlay }: { go: (screen: Screen) => void; onPlay: (game: typeof games[number]) => void }) {
-  return <div className="flex flex-col gap-6 px-5 py-6">
-    <div className="rounded-3xl border border-fuchsia-400/20 bg-gradient-to-br from-fuchsia-600/25 via-violet-700/20 to-transparent p-5 shadow-[0_15px_50px_rgba(126,34,206,0.14)]">
-      <p className="text-sm text-white/65">أهلاً بك يا محمد</p>
-      <h2 className="mt-2 text-2xl font-black">جاهز لتحدي اليوم؟</h2>
-      <p className="mt-2 text-sm leading-7 text-white/60">اختبر مهاراتك واربح نقاطاً وجوائز حقيقية.</p>
-      <button onClick={() => go("games")} className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-bold text-violet-950">ابدأ اللعب الآن</button>
+function Home({ go }: { go: (screen: Screen) => void; onPlay: (game: typeof games[number]) => void }) {
+  return <section className="flex min-h-[calc(100vh-138px)] flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="relative flex size-32 items-center justify-center rounded-[2.25rem] bg-gradient-to-br from-[#ff32be] via-[#9f2cff] to-[#593dff] shadow-[0_20px_70px_rgba(159,44,255,0.42)]">
+      <span className="text-7xl font-black italic text-white drop-shadow-lg">S</span>
     </div>
-    <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs text-white/50">رصيد النقاط</p><p className="mt-2 text-2xl font-black text-fuchsia-300">2,450</p></div>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs text-white/50">ترتيبك</p><p className="mt-2 text-2xl font-black text-cyan-300">#128</p></div>
+    <h1 className="mt-7 text-4xl font-black tracking-tight text-transparent [background:linear-gradient(120deg,#ff32be,#9f2cff_55%,#593dff)] bg-clip-text">SkillWin</h1>
+    <p className="mt-3 text-2xl font-bold text-white">العب واكسب</p>
+    <p className="mt-5 max-w-xs text-sm leading-7 text-white/65">&quot;النجاح ليس نهاية الطريق، الفشل ليس قاتلاً&quot;</p>
+    <button onClick={() => go("games")} className="mt-8 rounded-xl bg-gradient-to-l from-fuchsia-500 to-violet-600 px-8 py-3 text-sm font-bold shadow-lg shadow-fuchsia-900/30">الدخول إلى المنصة</button>
+    <div className="mt-10 flex flex-col gap-1 text-[10px] text-white/35">
+      <span>v1.9.3</span>
+      <span>Licensed by Cyprus Securities and Exchange Commission (CySEC) — 2023</span>
+      <span>Release License — SkillWin Platform 2026</span>
     </div>
-    <div className="flex items-center justify-between"><h3 className="text-lg font-bold">ألعاب مقترحة</h3><button onClick={() => go("games")} className="text-sm text-fuchsia-300">عرض الكل</button></div>
-    <div className="flex flex-col gap-3">{games.slice(0, 2).map((game) => <GameCard key={game.title} game={game} onPlay={onPlay} />)}</div>
-  </div>
+  </section>
 }
 
 function GameCard({ game, onPlay }: { game: typeof games[number]; onPlay: (game: typeof games[number]) => void }) {
@@ -63,5 +63,5 @@ export default function Page() {
   const [screen, setScreen] = useState<Screen>("home")
   const [activeGame, setActiveGame] = useState<typeof games[number] | null>(null)
   const content = screen === "home" ? <Home go={setScreen} onPlay={setActiveGame} /> : screen === "games" ? <Games onPlay={setActiveGame} /> : screen === "rewards" ? <Rewards /> : screen === "activity" ? <Activity /> : <Profile />
-  return <main dir="rtl" className="min-h-screen bg-[#090017] text-white"><div className="mx-auto min-h-screen w-full max-w-md bg-[radial-gradient(circle_at_50%_0%,rgba(89,35,151,0.28),transparent_35%),linear-gradient(180deg,#100022_0%,#07000f_100%)]"><Header onProfile={() => setScreen("profile")} /><div className="min-h-[calc(100vh-138px)]">{content}</div><nav className="sticky bottom-0 grid grid-cols-5 border-t border-white/10 bg-[#100022]/95 px-2 py-3 backdrop-blur-xl">{navItems.map((item) => <button key={item.id} onClick={() => setScreen(item.id)} className={`flex flex-col items-center gap-1 text-[11px] transition ${screen === item.id ? "font-bold text-fuchsia-300" : "text-white/45"}`}><span className="text-lg">{item.id === "home" ? "⌂" : item.id === "games" ? "◇" : item.id === "rewards" ? "◆" : item.id === "activity" ? "◒" : "○"}</span>{item.label}</button>)}</nav>{activeGame && <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm"><section className="w-full max-w-md rounded-3xl border border-fuchsia-400/30 bg-[#18002f] p-5 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="game-title"><div className={`flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${activeGame.color} text-xs font-black`}>{activeGame.icon}</div><h2 id="game-title" className="mt-4 text-xl font-black">{activeGame.title}</h2><p className="mt-2 text-sm leading-7 text-white/60">أنت على وشك بدء تحدٍ جديد. هل أنت مستعد لجمع المزيد من النقاط؟</p><div className="mt-5 flex gap-3"><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-white/70">ليس الآن</button><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl bg-gradient-to-l from-fuchsia-500 to-violet-600 px-4 py-3 text-sm font-bold shadow-lg shadow-fuchsia-900/30">ابدأ التحدي</button></div></section></div>}</div></main>
+  return <main dir="rtl" className="min-h-screen bg-[#090017] text-white"><div className="mx-auto min-h-screen w-full max-w-md bg-[radial-gradient(circle_at_50%_0%,rgba(89,35,151,0.28),transparent_35%),linear-gradient(180deg,#100022_0%,#07000f_100%)]">{screen !== "home" && <Header onProfile={() => setScreen("profile")} />}<div className={screen === "home" ? "min-h-screen" : "min-h-[calc(100vh-138px)]"}>{content}</div>{screen !== "home" && <nav className="sticky bottom-0 grid grid-cols-5 border-t border-white/10 bg-[#100022]/95 px-2 py-3 backdrop-blur-xl">{navItems.map((item) => <button key={item.id} onClick={() => setScreen(item.id)} className={`flex flex-col items-center gap-1 text-[11px] transition ${screen === item.id ? "font-bold text-fuchsia-300" : "text-white/45"}`}><span className="text-lg">{item.id === "home" ? "⌂" : item.id === "games" ? "◇" : item.id === "rewards" ? "◆" : item.id === "activity" ? "◒" : "○"}</span>{item.label}</button>)}</nav>}{activeGame && <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm"><section className="w-full max-w-md rounded-3xl border border-fuchsia-400/30 bg-[#18002f] p-5 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="game-title"><div className={`flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br ${activeGame.color} text-xs font-black`}>{activeGame.icon}</div><h2 id="game-title" className="mt-4 text-xl font-black">{activeGame.title}</h2><p className="mt-2 text-sm leading-7 text-white/60">أنت على وشك بدء تحدٍ جديد. هل أنت مستعد لجمع المزيد من النقاط؟</p><div className="mt-5 flex gap-3"><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl border border-white/15 px-4 py-3 text-sm font-bold text-white/70">ليس الآن</button><button onClick={() => setActiveGame(null)} className="flex-1 rounded-xl bg-gradient-to-l from-fuchsia-500 to-violet-600 px-4 py-3 text-sm font-bold shadow-lg shadow-fuchsia-900/30">ابدأ التحدي</button></div></section></div>}</div></main>
 }
