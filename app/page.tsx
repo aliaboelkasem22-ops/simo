@@ -27,6 +27,8 @@ export default function Page() {
   const [modal, setModal] = useState<ModalType>(null)
   const [toast, setToast] = useState("")
   const [code, setCode] = useState("")
+  const [verificationPhone, setVerificationPhone] = useState("")
+  const [verificationMode, setVerificationMode] = useState<"signup" | "quick">("quick")
   const [authError, setAuthError] = useState("")
   const [authLoading, setAuthLoading] = useState(false)
 
@@ -46,7 +48,7 @@ export default function Page() {
   if (screen === "landing") return <Landing setScreen={setScreen} notify={notify} />
   if (screen === "auth" || screen === "login" || screen === "quick") return <AuthWithSupabase screen={screen} setScreen={setScreen} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
   if (screen === "forgot") return <Forgot setScreen={setScreen} />
-  if (screen === "verify") return <Verify code={code} setCode={setCode} setScreen={setScreen} />
+  if (screen === "verify") return <Verify code={code} setCode={setCode} setScreen={setScreen} phone={verificationPhone} mode={verificationMode} setAuthError={setAuthError} setAuthLoading={setAuthLoading} authLoading={authLoading} />
 
   return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><div className="mx-auto min-h-screen w-full max-w-[520px] bg-[#09090a] pb-24">
     <header className="flex items-center justify-between border-b border-white/[.06] px-4 py-4"><button onClick={() => setTab("account")} className="flex size-12 items-center justify-center rounded-2xl bg-[#ed3039] text-2xl font-black">S</button><div className="flex items-center gap-3"><div className="text-right"><p className="text-xs text-white/45">مرحباً</p><p className="font-black">محمد</p></div><span className="size-3 rounded-full bg-[#21ce61]" /></div></header>
@@ -108,22 +110,32 @@ function Auth({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) =>
 function AuthWithSupabase({ screen, setScreen, setAuthError, authError, authLoading, setAuthLoading }: { screen: Screen; setScreen: (s: Screen) => void; setAuthError: (value: string) => void; authError: string; authLoading: boolean; setAuthLoading: (value: boolean) => void }) {
   const login = screen === "login"
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
+  const phoneMode = !email.trim() || phone.trim().length > 0
 
   const submit = async () => {
     setAuthError("")
     setAuthLoading(true)
     const supabase = createClient()
     const result = login
-      ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      : await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback` },
-        })
+      ? await supabase.auth.signInWithPassword(phoneMode ? { phone: phone.trim(), password } : { email: email.trim(), password })
+      : phoneMode
+        ? await supabase.auth.signUp({ phone: phone.trim(), password })
+        : await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+            options: { emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback` },
+          })
     setAuthLoading(false)
     if (result.error) {
       setAuthError(result.error.message.includes("confirm") ? "راجع بريدك الإلكتروني لتأكيد الحساب" : "تحقق من البريد وكلمة المرور ثم حاول مرة أخرى")
+      return
+    }
+    if (!login && phoneMode && !result.data.session) {
+      setVerificationPhone(phone.trim())
+      setVerificationMode("signup")
+      setScreen("verify")
       return
     }
     if (!login && !result.data.session) {
@@ -135,20 +147,20 @@ function AuthWithSupabase({ screen, setScreen, setAuthError, authError, authLoad
 
   const quickLogin = async () => {
     setAuthError("")
+    if (!phone.trim()) { setAuthError("اكتب رقم الهاتف أولاً"); return }
     setAuthLoading(true)
-    const { error } = await createClient().auth.signInAnonymously()
+    const { error } = await createClient().auth.signInWithOtp({ phone: phone.trim() })
     setAuthLoading(false)
-    if (error) {
-      setAuthError("الدخول السريع غير مفعّل حالياً. استخدم البريد الإلكتروني لحفظ الحساب")
-      return
-    }
-    setScreen("app")
+    if (error) { setAuthError("تعذر إرسال رمز الدخول. تأكد من رقم الهاتف وإعداد الرسائل"); return }
+    setVerificationPhone(phone.trim())
+    setVerificationMode("quick")
+    setScreen("verify")
   }
 
-  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "إنشاء حساب"}</h1><p className="mt-3 text-white/45">{login ? "بياناتك محفوظة ويمكنك العودة في أي وقت" : "احفظ دخولك بأمان على هذا الجهاز"}</p></div>{screen === "quick" ? <div className="mt-10 flex flex-col gap-4"><button onClick={quickLogin} disabled={authLoading} className="rounded-2xl bg-[#ff9d18] p-5 text-right font-black disabled:opacity-50"><span className="block text-xl">دخول سريع محفوظ</span><span className="text-sm font-normal text-black/60">بدون كلمة مرور</span></button><button onClick={() => setScreen("login")} className="py-3 text-white/50">تسجيل الدخول بالبريد</button></div> : <div className="mt-10 flex flex-col gap-4"><input aria-label="البريد الإلكتروني" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={submit} disabled={authLoading || !email || password.length < 6} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-50">{authLoading ? "جارٍ الحفظ..." : login ? "دخول وحفظ البيانات" : "إنشاء الحساب"}</button>{login && <button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button>}{!login && <button onClick={() => setScreen("login")} className="py-3 text-white/50">لدي حساب بالفعل</button>}</div>}{authError && <p role="alert" className="mt-5 rounded-2xl bg-[#3a1517] p-4 text-center text-sm text-[#ff8589]">{authError}</p>}</section></main>
+  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "إنشاء حساب"}</h1><p className="mt-3 text-white/45">{login ? "بياناتك محفوظة ويمكنك العودة في أي وقت" : "احفظ دخولك بأمان على هذا الجهاز"}</p></div>{screen === "quick" ? <div className="mt-10 flex flex-col gap-4"><input aria-label="رقم الهاتف" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="رقم الهاتف مع مفتاح الدولة" className="rounded-2xl border border-white/10 bg-[#151516] p-4 text-right outline-none"/><button onClick={quickLogin} disabled={authLoading} className="rounded-2xl bg-[#ff9d18] p-5 text-right font-black disabled:opacity-50"><span className="block text-xl">دخول سريع محفوظ</span><span className="text-sm font-normal text-black/60">بدون كلمة مرور</span></button><button onClick={() => setScreen("login")} className="py-3 text-white/50">تسجيل الدخول بالبريد</button></div> : <div className="mt-10 flex flex-col gap-4"><input aria-label="البريد الإلكتروني" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={submit} disabled={authLoading || !email || password.length < 6} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-50">{authLoading ? "جارٍ الحفظ..." : login ? "دخول وحفظ البيانات" : "إنشاء الحساب"}</button>{login && <button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button>}{!login && <button onClick={() => setScreen("login")} className="py-3 text-white/50">لدي حساب بالفعل</button>}</div>}{authError && <p role="alert" className="mt-5 rounded-2xl bg-[#3a1517] p-4 text-center text-sm text-[#ff8589]">{authError}</p>}</section></main>
 }
 
-function Verify({ code, setCode, setScreen }: { code: string; setCode: (v: string) => void; setScreen: (s: Screen) => void }) {
+function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLoading, authLoading }: { code: string; setCode: (v: string) => void; setScreen: (s: Screen) => void; phone: string; mode: "signup" | "quick"; setAuthError: (value: string) => void; setAuthLoading: (value: boolean) => void; authLoading: boolean }) {
   const [displayCode, setDisplayCode] = useState(() => String(Math.floor(10000 + Math.random() * 90000)))
   const [secondsLeft, setSecondsLeft] = useState(20)
 
@@ -166,10 +178,17 @@ function Verify({ code, setCode, setScreen }: { code: string; setCode: (v: strin
     return () => window.clearInterval(timer)
   }, [setCode])
 
-  const isExpired = secondsLeft === 0
-  const isValid = code === displayCode && !isExpired
+  const isValid = code.length === 6
+  const confirmCode = async () => {
+    setAuthError("")
+    setAuthLoading(true)
+    const { error } = await createClient().auth.verifyOtp({ phone, token: code, type: mode === "signup" ? "sms" : "sms" })
+    setAuthLoading(false)
+    if (error) { setAuthError("رمز الدخول غير صحيح أو منتهي"); return }
+    setScreen("app")
+  }
 
-  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("auth")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-24 rounded-[28px] border border-white/[.07] bg-[#151516] p-6 text-center"><h1 className="text-3xl font-black">تأكيد التسجيل</h1><p className="mt-3 text-white/45">اكتب الرقم الظاهر بالأسفل للتأكيد</p><div className="mx-auto mt-8 flex max-w-xs items-center justify-between rounded-2xl border border-[#ffb31c]/25 bg-[#201a0d] px-5 py-4"><b className="text-4xl tracking-[.35em] text-[#ffb31c]">{displayCode}</b><span className="text-lg font-black text-[#ffb31c]" aria-live="polite">{secondsLeft}s</span></div><p className="mt-3 text-sm text-white/40">يتغير الرمز تلقائياً كل 20 ثانية</p><input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 5))} inputMode="numeric" maxLength={5} aria-label="رمز التحقق" placeholder="• • • • •" className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0b0b0c] p-4 text-center text-xl tracking-[.35em] outline-none focus:border-[#ff9d18]"/><button disabled={!isValid} onClick={() => setScreen("app")} className="mt-4 w-full rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-40">تأكيد</button></div></section></main>
+  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("auth")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-24 rounded-[28px] border border-white/[.07] bg-[#151516] p-6 text-center"><h1 className="text-3xl font-black">تأكيد التسجيل</h1><p className="mt-3 text-white/45">اكتب رمز SMS المرسل إلى {phone}</p><div className="mx-auto mt-8 flex max-w-xs items-center justify-between rounded-2xl border border-[#ffb31c]/25 bg-[#201a0d] px-5 py-4"><b className="text-4xl tracking-[.35em] text-[#ffb31c]">{displayCode}</b><span className="text-lg font-black text-[#ffb31c]" aria-live="polite">{secondsLeft}s</span></div><p className="mt-3 text-sm text-white/40">يتغير الرمز تلقائياً كل 20 ثانية</p><input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={5} aria-label="رمز التحقق" placeholder="• • • • •" className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0b0b0c] p-4 text-center text-xl tracking-[.35em] outline-none focus:border-[#ff9d18]"/><button disabled={!isValid || authLoading} onClick={confirmCode} className="mt-4 w-full rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-40">{authLoading ? "جارٍ التحقق..." : "تأكيد رمز الدخول"}</button></div></section></main>
 }
 
 function HomePanel({ balance, setModal, notify }: { balance: number; setModal: (m: Exclude<ModalType, null>) => void; notify: (m: string) => void }) { return <><section className="border-b border-white/[.06] px-4 py-5"><div className="flex gap-3"><button onClick={() => setModal("withdraw")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#ef3941]/40 bg-[#321113] py-3 font-bold text-[#ff676d]"><ArrowDownLeft/>سحب</button><button onClick={() => setModal("deposit")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#20ca5d] py-3 font-bold"><Plus/>إيداع</button><div className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#8c5b06] bg-[#291f0c] text-[#ffc21c]"><CircleDollarSign/><span><small className="block text-xs text-white/45">الرصيد</small><b className="text-xl">{balance}</b></span></div></div></section><section className="px-5 pb-8 pt-16 text-center"><p className="text-2xl text-white/45">رصيدك</p><p className="mt-5 text-7xl font-black">{balance}</p><p className="mt-2 text-3xl text-white/45">عملة</p><p className="mt-5 text-xl text-white/45">ج.م <span className="text-[#20cf61]">{balance}</span></p><div className="mt-14 grid grid-cols-3 gap-4"><RoundAction icon={<ArrowDownLeft/>} label="سحب" tone="red" onClick={() => setModal("withdraw")}/><RoundAction icon={<RefreshCw/>} label="تحديث" tone="gray" onClick={() => notify("تم تحديث الرصيد")}/><RoundAction icon={<Plus/>} label="��يداع" tone="green" onClick={() => setModal("deposit")}/></div><div className="mt-16 rounded-[28px] bg-gradient-to-br from-[#ffb01b] to-[#ff7411] p-6 text-right"><p className="text-3xl font-black">العب واكسب</p><p className="mt-1">اربح 400 عملة في دقائق</p><button onClick={() => setModal("game")} className="mt-6 w-full rounded-2xl bg-white/25 py-4 text-lg font-black">ابدأ الآن ←</button></div></section></> }
