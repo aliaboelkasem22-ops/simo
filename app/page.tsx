@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { ForeignDeposit, type ForeignMethod } from "@/components/foreign-deposit"
 import { EgyptDeposit } from "@/components/egypt-deposit"
 import { ArrowDownLeft, Bell, ChevronLeft, CircleDollarSign, Home, LogOut, Plus, RefreshCw, ReceiptText, Settings, Trophy, User, Wallet, X } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 type Tab = "home" | "wallet" | "alerts" | "competitions" | "finance" | "account"
 type Screen = "landing" | "auth" | "login" | "quick" | "forgot" | "verify" | "app"
@@ -26,13 +27,24 @@ export default function Page() {
   const [modal, setModal] = useState<ModalType>(null)
   const [toast, setToast] = useState("")
   const [code, setCode] = useState("")
+  const [authError, setAuthError] = useState("")
+  const [authLoading, setAuthLoading] = useState(false)
+
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setIntro(false)
+        setScreen("app")
+      }
+    })
+  }, [])
 
   const finishIntro = useCallback(() => setIntro(false), [])
   const notify = (message: string) => { setToast(message); setTimeout(() => setToast(""), 2200) }
 
   if (intro) return <Splash onDone={finishIntro} />
   if (screen === "landing") return <Landing setScreen={setScreen} notify={notify} />
-  if (screen === "auth" || screen === "login" || screen === "quick") return <Auth screen={screen} setScreen={setScreen} />
+  if (screen === "auth" || screen === "login" || screen === "quick") return <AuthWithSupabase screen={screen} setScreen={setScreen} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
   if (screen === "forgot") return <Forgot setScreen={setScreen} />
   if (screen === "verify") return <Verify code={code} setCode={setCode} setScreen={setScreen} />
 
@@ -92,6 +104,49 @@ function Splash({ onDone }: { onDone: () => void }) {
 function Landing({ setScreen, notify }: { setScreen: (s: Screen) => void; notify: (m: string) => void }) { return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col items-center px-6 py-7 text-center"><button onClick={() => notify("تم تبديل المظهر")} aria-label="تبديل المظهر" className="self-start rounded-full p-2 text-xl text-white/45">☼</button><div className="mt-8 flex size-28 flex-col items-center justify-center rounded-full border-[6px] border-[#1386d0] text-[#ff7b13] shadow-[0_0_24px_rgba(19,134,208,.16)]"><b className="text-7xl leading-none">?</b><span className="text-sm font-black text-[#1386d0]">SKILL WIN</span></div><h1 className="mt-8 text-4xl font-black">SkillWin</h1><h2 className="mt-3 text-2xl font-black">العب واكسب</h2><p className="mt-2 text-sm text-white/45">اختبر معلوماتك واربح جوائز حقيقية</p><div className="mt-10 grid w-full grid-cols-3 divide-x divide-white/10 rounded-2xl bg-[#151516] px-3 py-4"><div><b className="text-2xl text-white">10</b><p className="text-xs text-white/45">اسئلة</p></div><div><b className="text-2xl text-[#ff9d18]">10s</b><p className="text-xs text-white/45">لكل سؤال</p></div><div><b className="text-2xl text-[#20ca5d]">400</b><p className="text-xs text-white/45">جائزة</p></div></div><div className="mt-7 w-full rounded-2xl border border-white/[.08] bg-[#151516] px-4 py-3 text-sm text-white/50"><p>نظام دفع آلي ومؤمن 100%</p><div className="mt-2 flex justify-center gap-5 text-xs"><span><i className="mr-1 inline-block size-2 rounded-full bg-[#20ca5d]"/>إيداع فوري</span><span><i className="mr-1 inline-block size-2 rounded-full bg-[#d89b20]"/>سحب آلي</span></div></div><div className="mt-auto flex w-full flex-col gap-3 pt-7"><button onClick={() => setScreen("auth")} className="rounded-2xl bg-[#ff9d18] py-4 text-lg font-black text-black shadow-[0_8px_28px_rgba(255,157,24,.16)]">انشاء حساب جديد</button><button onClick={() => setScreen("login")} className="rounded-2xl border border-white/10 py-4 font-bold text-white/80">عندي حساب</button></div></section></main> }
 
 function Auth({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) { const login = screen === "login"; return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "اختر طريقة التسجيل"}</h1><p className="mt-3 text-white/45">{login ? "ادخل إلى حسابك واستكمل اللعب" : "اختر الطريقة الأنسب لك"}</p></div>{login ? <div className="mt-10 flex flex-col gap-4"><input aria-label="رقم الهاتف أو البريد الإلكتروني" placeholder="رقم الهاتف أو البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={() => setScreen("app")} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">دخول</button><button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button><button onClick={() => setScreen("forgot")} className="py-2 text-sm text-[#ffb31c]">نسيت كلمة المرور؟</button></div> : <div className="mt-10 flex flex-col gap-4"><button onClick={() => setScreen("verify")} className="rounded-2xl bg-[#ff9d18] p-5 text-right"><b className="block text-xl">{screen === "quick" ? "إرسال رمز الدخول" : "التسجيل السريع"}</b><span className="text-sm text-black/60">بدون بريد إلكتروني، في ثوانٍ</span></button>{screen !== "quick" && <button onClick={() => setScreen("login")} className="rounded-2xl bg-[#151516] p-5 text-right"><b className="block text-xl">التسجيل بالبريد</b><span className="text-sm text-white/40">استخدم بريدك الإلكتروني</span></button>}</div>}</section></main> }
+
+function AuthWithSupabase({ screen, setScreen, setAuthError, authError, authLoading, setAuthLoading }: { screen: Screen; setScreen: (s: Screen) => void; setAuthError: (value: string) => void; authError: string; authLoading: boolean; setAuthLoading: (value: boolean) => void }) {
+  const login = screen === "login"
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+
+  const submit = async () => {
+    setAuthError("")
+    setAuthLoading(true)
+    const supabase = createClient()
+    const result = login
+      ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      : await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ?? `${window.location.origin}/auth/callback` },
+        })
+    setAuthLoading(false)
+    if (result.error) {
+      setAuthError(result.error.message.includes("confirm") ? "راجع بريدك الإلكتروني لتأكيد الحساب" : "تحقق من البريد وكلمة المرور ثم حاول مرة أخرى")
+      return
+    }
+    if (!login && !result.data.session) {
+      setAuthError("تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيده")
+      return
+    }
+    setScreen("app")
+  }
+
+  const quickLogin = async () => {
+    setAuthError("")
+    setAuthLoading(true)
+    const { error } = await createClient().auth.signInAnonymously()
+    setAuthLoading(false)
+    if (error) {
+      setAuthError("الدخول السريع غير مفعّل حالياً. استخدم البريد الإلكتروني لحفظ الحساب")
+      return
+    }
+    setScreen("app")
+  }
+
+  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "إنشاء حساب"}</h1><p className="mt-3 text-white/45">{login ? "بياناتك محفوظة ويمكنك العودة في أي وقت" : "احفظ دخولك بأمان على هذا الجهاز"}</p></div>{screen === "quick" ? <div className="mt-10 flex flex-col gap-4"><button onClick={quickLogin} disabled={authLoading} className="rounded-2xl bg-[#ff9d18] p-5 text-right font-black disabled:opacity-50"><span className="block text-xl">دخول سريع محفوظ</span><span className="text-sm font-normal text-black/60">بدون كلمة مرور</span></button><button onClick={() => setScreen("login")} className="py-3 text-white/50">تسجيل الدخول بالبريد</button></div> : <div className="mt-10 flex flex-col gap-4"><input aria-label="البريد الإلكتروني" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={submit} disabled={authLoading || !email || password.length < 6} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-50">{authLoading ? "جارٍ الحفظ..." : login ? "دخول وحفظ البيانات" : "إنشاء الحساب"}</button>{login && <button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button>}{!login && <button onClick={() => setScreen("login")} className="py-3 text-white/50">لدي حساب بالفعل</button>}</div>}{authError && <p role="alert" className="mt-5 rounded-2xl bg-[#3a1517] p-4 text-center text-sm text-[#ff8589]">{authError}</p>}</section></main>
+}
 
 function Verify({ code, setCode, setScreen }: { code: string; setCode: (v: string) => void; setScreen: (s: Screen) => void }) {
   const [displayCode, setDisplayCode] = useState(() => String(Math.floor(10000 + Math.random() * 90000)))
