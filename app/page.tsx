@@ -6,7 +6,7 @@ import { EgyptDeposit } from "@/components/egypt-deposit"
 import { ArrowDownLeft, Bell, ChevronLeft, CircleDollarSign, Home, LogOut, Plus, RefreshCw, ReceiptText, Settings, Trophy, User, Wallet, X } from "lucide-react"
 
 type Tab = "home" | "wallet" | "alerts" | "competitions" | "finance" | "account"
-type Screen = "landing" | "auth" | "login" | "email-login" | "quick" | "forgot" | "verify" | "app"
+type Screen = "landing" | "auth" | "login" | "email-login" | "quick" | "forgot" | "verify" | "signup-name" | "signup-phone" | "signup-password" | "app"
 type ModalType = "deposit" | "withdraw" | "game" | null
 
 const nav: { id: Tab; label: string; icon: typeof Home }[] = [
@@ -46,7 +46,7 @@ export default function Page() {
 
   if (intro) return <Splash onDone={finishIntro} />
   if (screen === "landing") return <Landing setScreen={setScreen} notify={notify} />
-  if (screen === "auth" || screen === "login" || screen === "email-login" || screen === "quick") return <AuthWithSupabase screen={screen} setScreen={setScreen} setVerificationPhone={setVerificationPhone} setVerificationMode={setVerificationMode} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
+  if (screen === "auth" || screen === "login" || screen === "email-login" || screen === "quick" || screen === "signup-name" || screen === "signup-phone" || screen === "signup-password") return <AuthWithSupabase screen={screen} setScreen={setScreen} setVerificationPhone={setVerificationPhone} setVerificationMode={setVerificationMode} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
   if (screen === "forgot") return <Forgot setScreen={setScreen} />
   if (screen === "verify") return <Verify code={code} setCode={setCode} setScreen={setScreen} phone={verificationPhone} mode={verificationMode} setAuthError={setAuthError} setAuthLoading={setAuthLoading} authLoading={authLoading} />
 
@@ -108,49 +108,73 @@ function Landing({ setScreen, notify }: { setScreen: (s: Screen) => void; notify
 function Auth({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) { const login = screen === "login"; return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "اختر طريقة التسجيل"}</h1><p className="mt-3 text-white/45">{login ? "ادخل إلى حسابك واستكمل اللعب" : "اختر الطريقة الأنسب لك"}</p></div>{login ? <div className="mt-10 flex flex-col gap-4"><input aria-label="رقم الهاتف أو البريد الإلكتروني" placeholder="رقم الهاتف أو البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={() => setScreen("app")} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">دخول</button><button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button><button onClick={() => setScreen("forgot")} className="py-2 text-sm text-[#ffb31c]">نسيت كلمة المرور؟</button></div> : <div className="mt-10 flex flex-col gap-4"><button onClick={() => setScreen("verify")} className="rounded-2xl bg-[#ff9d18] p-5 text-right"><b className="block text-xl">{screen === "quick" ? "إرسال رمز الدخول" : "التسجيل السريع"}</b><span className="text-sm text-black/60">بدون بريد إلكتروني، في ثوانٍ</span></button>{screen !== "quick" && <button onClick={() => setScreen("auth")} className="rounded-2xl bg-[#151516] p-5 text-right"><b className="block text-xl">التسجيل بالبريد</b><span className="text-sm text-white/40">استخدم بريدك الإلكتروني</span></button>}</div>}</section></main> }
 
 function AuthWithSupabase({ screen, setScreen, setVerificationPhone, setVerificationMode, setAuthError, authError, authLoading, setAuthLoading }: { screen: Screen; setScreen: (s: Screen) => void; setVerificationPhone: (value: string) => void; setVerificationMode: (value: "signup" | "quick") => void; setAuthError: (value: string) => void; authError: string; authLoading: boolean; setAuthLoading: (value: boolean) => void }) {
-  const login = screen === "login" || screen === "email-login"
+  const signup = screen === "auth" || screen === "signup-name" || screen === "signup-phone" || screen === "signup-password"
+  const login = screen === "login"
   const emailLogin = screen === "email-login"
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
+  const [name, setName] = useState("")
   const [password, setPassword] = useState("")
-  const phoneMode = !emailLogin
 
+  useEffect(() => {
+    if (screen === "auth") setScreen("signup-name")
+  }, [screen, setScreen])
 
-  const submit = async () => {
-    setAuthError("")
-    const normalizedPhone = phone.replace(/\D/g, "")
-    if (phoneMode && !/^01\d{9}$/.test(normalizedPhone)) {
-      setAuthError("اكتب رقمًا مصريًا يبدأ بـ 01 ويتكون من 11 رقمًا")
-      return
-    }
-    if (!emailLogin && !password.trim()) {
-      setAuthError("اكتب كلمة المرور للمتابعة")
-      return
-    }
-    setAuthLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 350))
-    const account = { phone: normalizedPhone, email: email.trim(), password, name: "مستخدم SkillWin" }
+  const normalizedPhone = phone.replace(/\D/g, "")
+  const validPhone = /^01\d{9}$/.test(normalizedPhone)
+
+  const saveAccount = (account: { phone: string; email?: string; password?: string; name: string }) => {
     window.localStorage.setItem("skillwin_account", JSON.stringify(account))
     window.localStorage.setItem("skillwin_logged_in", "true")
-    setAuthLoading(false)
-    setScreen("app")
   }
 
-  const quickLogin = async () => {
+  const nextSignupStep = () => {
     setAuthError("")
-    const normalizedPhone = phone.replace(/\D/g, "")
-    if (!/^01\d{9}$/.test(normalizedPhone)) { setAuthError("اكتب رقمًا مصريًا يبدأ بـ 01 ويتكون من 11 رقمًا"); return }
-    setAuthLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 350))
-    const savedAccount = window.localStorage.getItem("skillwin_account")
-    const account = savedAccount ? JSON.parse(savedAccount) : { phone: normalizedPhone, name: "مستخدم SkillWin", password: "" }
-    window.localStorage.setItem("skillwin_account", JSON.stringify({ ...account, phone: normalizedPhone }))
-    window.localStorage.setItem("skillwin_logged_in", "true")
-    setAuthLoading(false)
+    if (!name.trim()) { setAuthError("اكتب الاسم الثلاثي للمتابعة"); return }
+    setScreen("signup-phone")
+  }
+
+  const nextPhoneStep = () => {
+    setAuthError("")
+    if (!validPhone) { setAuthError("اكتب رقمًا يبدأ بـ 01 ويتكون من 11 رقمًا"); return }
+    setScreen("signup-password")
+  }
+
+  const finishSignup = () => {
+    setAuthError("")
+    if (!password.trim()) { setAuthError("اكتب كلمة المرور للمتابعة"); return }
+    saveAccount({ phone: normalizedPhone, password, name: name.trim() })
     setScreen("app")
   }
 
-  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{emailLogin ? "تسجيل الدخول بالبريد" : login ? "تسجيل الدخول برقم الهاتف" : screen === "quick" ? "الدخول السريع" : "إنشاء حساب برقم الهاتف"}</h1><p className="mt-3 text-white/45">{emailLogin ? "واجهة منفصلة للدخول بالبريد الإلكتروني" : login ? "الدخول الأساسي برقم الهاتف المصري" : "أنشئ حسابك برقم الهاتف المصري"}</p></div>{screen === "quick" ? <div className="mt-10 flex flex-col gap-4"><input aria-label="رقم الهاتف" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="رقم مصري يبدأ بـ 01 ويتكون من 11 رقمًا" className="rounded-2xl border border-white/10 bg-[#151516] p-4 text-right outline-none"/><button onClick={quickLogin} disabled={authLoading} className="rounded-2xl bg-[#ff9d18] p-5 text-right font-black disabled:opacity-50"><span className="block text-xl">دخول سريع محفوظ</span><span className="text-sm font-normal text-black/60">بدون كلمة مرور</span></button><button onClick={() => setScreen("email-login")} className="py-3 text-white/50">تسجيل الدخول بالبريد الإلكتروني</button></div> : <div className="mt-10 flex flex-col gap-4">{emailLogin ? <input aria-label="البريد الإلكتروني" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/> : <input aria-label="رقم الهاتف المصري" type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9+]/g, ""))} placeholder="رقم الهاتف المصري (01xxxxxxxxx)" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/>}<input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={submit} disabled={authLoading} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-50">{authLoading ? "جارٍ الحفظ..." : login ? "دخول وحفظ البيانات" : "إنشاء الحساب"}</button>{login && <button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button>}{!login && <button onClick={() => setScreen("auth")} className="py-3 text-white/50">لدي حساب بالفعل</button>}</div>}{authError && <p role="alert" className="mt-5 rounded-2xl bg-[#3a1517] p-4 text-center text-sm text-[#ff8589]">{authError}</p>}</section></main>
+  const loginWithPhone = () => {
+    setAuthError("")
+    if (!validPhone) { setAuthError("اكتب رقمًا يبدأ بـ 01 ويتكون من 11 رقمًا"); return }
+    if (!password.trim()) { setAuthError("اكتب كلمة المرور للمتابعة"); return }
+    const saved = window.localStorage.getItem("skillwin_account")
+    const account = saved ? JSON.parse(saved) : { phone: normalizedPhone, name: "مستخدم SkillWin" }
+    saveAccount({ ...account, phone: normalizedPhone, password })
+    setScreen("app")
+  }
+
+  const quickLogin = () => {
+    setAuthError("")
+    if (!validPhone) { setAuthError("اكتب رقمًا يبدأ بـ 01 ويتكون من 11 رقمًا"); return }
+    const saved = window.localStorage.getItem("skillwin_account")
+    saveAccount(saved ? JSON.parse(saved) : { phone: normalizedPhone, name: "مستخدم SkillWin" })
+    setScreen("app")
+  }
+
+  const emailLoginSubmit = () => {
+    if (!email.trim() || !password.trim()) { setAuthError("اكتب البريد وكلمة المرور للمتابعة"); return }
+    saveAccount({ phone: "", email: email.trim(), password, name: "مستخدم SkillWin" })
+    setScreen("app")
+  }
+
+  const title = signup ? (screen === "signup-phone" ? "رقم الموبيل" : screen === "signup-password" ? "كلمة المرور" : "إنشاء حساب جديد") : emailLogin ? "تسجيل الدخول بالبريد" : login ? "تسجيل الدخول" : "الدخول السريع"
+  const subtitle = signup ? (screen === "signup-name" || screen === "auth" ? "اكتب اسمك الثلاثي لإنشاء حسابك" : screen === "signup-phone" ? "اكتب رقم الموبيل المصري بدون رمز الدولة" : "اختر كلمة مرور لحماية حسابك") : emailLogin ? "واجهة منفصلة للدخول بالبريد الإلكتروني" : login ? "ادخل إلى حسابك برقم الهاتف المصري" : "ادخل برقم هاتفك بدون كلمة مرور"
+
+  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen(signup && screen !== "signup-name" ? (screen === "signup-password" ? "signup-phone" : "signup-name") : "landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><div className="mx-auto mb-7 flex size-20 items-center justify-center rounded-full border-4 border-[#1386d0] text-5xl font-black text-[#ff7b13]">?</div><h1 className="text-3xl font-black">{title}</h1><p className="mt-3 text-white/45">{subtitle}</p></div><div className="mt-10 flex flex-col gap-4">{signup && (screen === "auth" || screen === "signup-name") && <><input autoFocus aria-label="الاسم الثلاثي" value={name} onChange={e => setName(e.target.value)} placeholder="الاسم الثلاثي" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={nextSignupStep} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">التالي</button></>}{signup && screen === "signup-phone" && <><input autoFocus aria-label="رقم الموبيل" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="رقم يبدأ بـ 01 - 11 رقمًا" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={nextPhoneStep} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">التالي</button></>}{signup && screen === "signup-password" && <><input autoFocus aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={finishSignup} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">إنشاء الحساب</button></>}{login && <><input aria-label="رقم الموبيل" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="رقم يبدأ بـ 01 - 11 رقمًا" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={loginWithPhone} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">دخول</button><button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button></>}{emailLogin && <><input aria-label="البريد الإلكتروني" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={emailLoginSubmit} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">دخول</button></>}{screen === "quick" && <><input aria-label="رقم الموبيل" type="tel" inputMode="numeric" value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="رقم يبدأ بـ 01 - 11 رقمًا" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={quickLogin} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">الدخول السريع</button></>}{authError && <p role="alert" className="rounded-2xl bg-[#42171a] p-4 text-center text-[#ff858a]">{authError}</p>}<div className="flex justify-center gap-4 text-sm text-white/45">{signup ? <button onClick={() => setScreen("login")}>لدي حساب بالفعل</button> : <button onClick={() => setScreen("signup-name")}>إنشاء حساب جديد</button>}{!signup && <button onClick={() => setScreen("email-login")}>الدخول بالبريد</button>}</div></div></section></main>
 }
 
 function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLoading, authLoading }: { code: string; setCode: (v: string) => void; setScreen: (s: Screen) => void; phone: string; mode: "signup" | "quick"; setAuthError: (value: string) => void; setAuthLoading: (value: boolean) => void; authLoading: boolean }) {
