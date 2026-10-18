@@ -33,7 +33,7 @@ export default function Page() {
   const [authLoading, setAuthLoading] = useState(false)
 
   useEffect(() => {
-    createClient().auth.getSession().then(({ data }) => {
+    createClient().auth.getSession().then(({ data }: { data: { session: unknown } }) => {
       if (data.session) {
         setIntro(false)
         setScreen("app")
@@ -46,7 +46,7 @@ export default function Page() {
 
   if (intro) return <Splash onDone={finishIntro} />
   if (screen === "landing") return <Landing setScreen={setScreen} notify={notify} />
-  if (screen === "auth" || screen === "login" || screen === "email-login" || screen === "quick") return <AuthWithSupabase screen={screen} setScreen={setScreen} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
+  if (screen === "auth" || screen === "login" || screen === "email-login" || screen === "quick") return <AuthWithSupabase screen={screen} setScreen={setScreen} setVerificationPhone={setVerificationPhone} setVerificationMode={setVerificationMode} setAuthError={setAuthError} authError={authError} authLoading={authLoading} setAuthLoading={setAuthLoading} />
   if (screen === "forgot") return <Forgot setScreen={setScreen} />
   if (screen === "verify") return <Verify code={code} setCode={setCode} setScreen={setScreen} phone={verificationPhone} mode={verificationMode} setAuthError={setAuthError} setAuthLoading={setAuthLoading} authLoading={authLoading} />
 
@@ -107,7 +107,7 @@ function Landing({ setScreen, notify }: { setScreen: (s: Screen) => void; notify
 
 function Auth({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) { const login = screen === "login"; return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("landing")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-20 text-center"><h1 className="text-3xl font-black">{login ? "تسجيل الدخول" : screen === "quick" ? "الدخول السريع" : "اختر طريقة التسجيل"}</h1><p className="mt-3 text-white/45">{login ? "ادخل إلى حسابك واستكمل اللعب" : "اختر الطريقة الأنسب لك"}</p></div>{login ? <div className="mt-10 flex flex-col gap-4"><input aria-label="رقم الهاتف أو البريد الإلكتروني" placeholder="رقم الهاتف أو البريد الإلكتروني" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><input aria-label="كلمة المرور" type="password" placeholder="كلمة المرور" className="rounded-2xl border border-white/10 bg-[#151516] p-4 outline-none"/><button onClick={() => setScreen("app")} className="rounded-2xl bg-[#ff9d18] py-4 font-black text-black">دخول</button><button onClick={() => setScreen("quick")} className="py-3 text-white/50">الدخول السريع بدون كلمة مرور</button><button onClick={() => setScreen("forgot")} className="py-2 text-sm text-[#ffb31c]">نسيت كلمة المرور؟</button></div> : <div className="mt-10 flex flex-col gap-4"><button onClick={() => setScreen("verify")} className="rounded-2xl bg-[#ff9d18] p-5 text-right"><b className="block text-xl">{screen === "quick" ? "إرسال رمز الدخول" : "التسجيل السريع"}</b><span className="text-sm text-black/60">بدون بريد إلكتروني، في ثوانٍ</span></button>{screen !== "quick" && <button onClick={() => setScreen("auth")} className="rounded-2xl bg-[#151516] p-5 text-right"><b className="block text-xl">التسجيل بالبريد</b><span className="text-sm text-white/40">استخدم بريدك الإلكتروني</span></button>}</div>}</section></main> }
 
-function AuthWithSupabase({ screen, setScreen, setAuthError, authError, authLoading, setAuthLoading }: { screen: Screen; setScreen: (s: Screen) => void; setAuthError: (value: string) => void; authError: string; authLoading: boolean; setAuthLoading: (value: boolean) => void }) {
+function AuthWithSupabase({ screen, setScreen, setVerificationPhone, setVerificationMode, setAuthError, authError, authLoading, setAuthLoading }: { screen: Screen; setScreen: (s: Screen) => void; setVerificationPhone: (value: string) => void; setVerificationMode: (value: "signup" | "quick") => void; setAuthError: (value: string) => void; authError: string; authLoading: boolean; setAuthLoading: (value: boolean) => void }) {
   const login = screen === "login" || screen === "email-login"
   const emailLogin = screen === "email-login"
   const [email, setEmail] = useState("")
@@ -168,14 +168,14 @@ function AuthWithSupabase({ screen, setScreen, setAuthError, authError, authLoad
 }
 
 function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLoading, authLoading }: { code: string; setCode: (v: string) => void; setScreen: (s: Screen) => void; phone: string; mode: "signup" | "quick"; setAuthError: (value: string) => void; setAuthLoading: (value: boolean) => void; authLoading: boolean }) {
-  const [displayCode, setDisplayCode] = useState(() => String(Math.floor(10000 + Math.random() * 90000)))
+  const [displayCode, setDisplayCode] = useState(() => String(Math.floor(100000 + Math.random() * 900000)))
   const [secondsLeft, setSecondsLeft] = useState(20)
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setSecondsLeft((seconds) => {
         if (seconds <= 1) {
-          setDisplayCode(String(Math.floor(10000 + Math.random() * 90000)))
+          setDisplayCode(String(Math.floor(100000 + Math.random() * 900000)))
           setCode("")
           return 20
         }
@@ -195,7 +195,7 @@ function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLo
     setScreen("app")
   }
 
-  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("auth")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-24 rounded-[28px] border border-white/[.07] bg-[#151516] p-6 text-center"><h1 className="text-3xl font-black">تأكيد التسجيل</h1><p className="mt-3 text-white/45">اكتب رمز SMS المرسل إلى {phone}</p><div className="mx-auto mt-8 flex max-w-xs items-center justify-between rounded-2xl border border-[#ffb31c]/25 bg-[#201a0d] px-5 py-4"><b className="text-4xl tracking-[.35em] text-[#ffb31c]">{displayCode}</b><span className="text-lg font-black text-[#ffb31c]" aria-live="polite">{secondsLeft}s</span></div><p className="mt-3 text-sm text-white/40">يتغير الرمز تلقائياً كل 20 ثانية</p><input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={5} aria-label="رمز التحقق" placeholder="• • • • •" className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0b0b0c] p-4 text-center text-xl tracking-[.35em] outline-none focus:border-[#ff9d18]"/><button disabled={!isValid || authLoading} onClick={confirmCode} className="mt-4 w-full rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-40">{authLoading ? "جارٍ التحقق..." : "تأكيد رمز الدخول"}</button></div></section></main>
+  return <main dir="rtl" className="min-h-screen bg-[#080809] text-white"><section className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-6 py-8"><button onClick={() => setScreen("auth")} className="self-start rounded-full border border-white/10 px-4 py-2 text-white/60">رجوع</button><div className="mt-24 rounded-[28px] border border-white/[.07] bg-[#151516] p-6 text-center"><h1 className="text-3xl font-black">{mode === "signup" ? "تأكيد إنشاء الحساب" : "تأكيد الدخول السريع"}</h1><p className="mt-3 text-white/45">اكتب رمز SMS المرسل إلى {phone}</p><div className="mx-auto mt-8 flex max-w-xs items-center justify-between rounded-2xl border border-[#ffb31c]/25 bg-[#201a0d] px-5 py-4"><b className="text-4xl tracking-[.35em] text-[#ffb31c]">{displayCode}</b><span className="text-lg font-black text-[#ffb31c]" aria-live="polite">{secondsLeft}s</span></div><p className="mt-3 text-sm text-white/40">يتغير الرمز تلقائياً كل 20 ثانية</p><input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} aria-label="رمز التحقق" placeholder="• • • • • •" className="mt-8 w-full rounded-2xl border border-white/10 bg-[#0b0b0c] p-4 text-center text-xl tracking-[.35em] outline-none focus:border-[#ff9d18]"/><button disabled={!isValid || authLoading} onClick={confirmCode} className="mt-4 w-full rounded-2xl bg-[#ff9d18] py-4 font-black text-black disabled:opacity-40">{authLoading ? "جارٍ التحقق..." : "تأكيد رمز الدخول"}</button></div></section></main>
 }
 
 function HomePanel({ balance, setModal, notify }: { balance: number; setModal: (m: Exclude<ModalType, null>) => void; notify: (m: string) => void }) { return <><section className="border-b border-white/[.06] px-4 py-5"><div className="flex gap-3"><button onClick={() => setModal("withdraw")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#ef3941]/40 bg-[#321113] py-3 font-bold text-[#ff676d]"><ArrowDownLeft/>سحب</button><button onClick={() => setModal("deposit")} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#20ca5d] py-3 font-bold"><Plus/>إيداع</button><div className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#8c5b06] bg-[#291f0c] text-[#ffc21c]"><CircleDollarSign/><span><small className="block text-xs text-white/45">الرصيد</small><b className="text-xl">{balance}</b></span></div></div></section><section className="px-5 pb-8 pt-16 text-center"><p className="text-2xl text-white/45">رصيدك</p><p className="mt-5 text-7xl font-black">{balance}</p><p className="mt-2 text-3xl text-white/45">عملة</p><p className="mt-5 text-xl text-white/45">ج.م <span className="text-[#20cf61]">{balance}</span></p><div className="mt-14 grid grid-cols-3 gap-4"><RoundAction icon={<ArrowDownLeft/>} label="سحب" tone="red" onClick={() => setModal("withdraw")}/><RoundAction icon={<RefreshCw/>} label="تحديث" tone="gray" onClick={() => notify("تم تحديث الرصيد")}/><RoundAction icon={<Plus/>} label="��يداع" tone="green" onClick={() => setModal("deposit")}/></div><div className="mt-16 rounded-[28px] bg-gradient-to-br from-[#ffb01b] to-[#ff7411] p-6 text-right"><p className="text-3xl font-black">العب واكسب</p><p className="mt-1">اربح 400 عملة في دقائق</p><button onClick={() => setModal("game")} className="mt-6 w-full rounded-2xl bg-white/25 py-4 text-lg font-black">ابدأ الآن ←</button></div></section></> }
