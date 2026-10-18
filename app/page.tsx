@@ -33,8 +33,16 @@ export default function Page() {
   const [authLoading, setAuthLoading] = useState(false)
 
   useEffect(() => {
+    const savedSession = window.localStorage.getItem("skillwin_logged_in")
+    if (savedSession === "true") {
+      setIntro(false)
+      setScreen("app")
+      return
+    }
+
     createClient().auth.getSession().then(({ data }: { data: { session: unknown } }) => {
       if (data.session) {
+        window.localStorage.setItem("skillwin_logged_in", "true")
         setIntro(false)
         setScreen("app")
       }
@@ -149,6 +157,7 @@ function AuthWithSupabase({ screen, setScreen, setVerificationPhone, setVerifica
       setAuthError("تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيده")
       return
     }
+    window.localStorage.setItem("skillwin_logged_in", "true")
     setScreen("app")
   }
 
@@ -192,6 +201,7 @@ function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLo
     const { error } = await createClient().auth.verifyOtp({ phone, token: code, type: mode === "signup" ? "sms" : "sms" })
     setAuthLoading(false)
     if (error) { setAuthError("رمز الدخول غير صحيح أو منتهي"); return }
+    window.localStorage.setItem("skillwin_logged_in", "true")
     setScreen("app")
   }
 
