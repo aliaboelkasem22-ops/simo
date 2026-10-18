@@ -217,6 +217,10 @@ function Verify({ code, setCode, setScreen, phone, mode, setAuthError, setAuthLo
     await new Promise((resolve) => setTimeout(resolve, 250))
     setAuthLoading(false)
     if (code !== displayCode) { setAuthError("رمز الدخول غير صحيح أو منتهي"); return }
+    if (mode === "quick") {
+      setScreen("signup-name")
+      return
+    }
     window.localStorage.setItem("trivia_win_logged_in", "true")
     setScreen("app")
   }
