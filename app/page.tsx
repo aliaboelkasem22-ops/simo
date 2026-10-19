@@ -63,7 +63,7 @@ export default function Page() {
         setAccount({ name: parsed.name || "Trivia Win User", phone: parsed.phone || "", email: parsed.email || "", accountCode: parsed.accountCode || "" })
         const savedBalance = window.localStorage.getItem("trivia_win_balance")
         if (savedBalance) setBalance(Number(savedBalance) || 0)
-      } catch { /* ignore malformed demo data */ }
+      } catch { /* ignore malformed account data */ }
     }
     const savedSession = window.localStorage.getItem("trivia_win_logged_in")
     if (savedSession === "true") {
@@ -190,20 +190,20 @@ function AuthWithSupabase({ screen, setScreen, setCode, setBalance, setVerificat
     setAuthError("")
     if (!validPhone) { setAuthError("أدخل رقم هاتف يبدأ بـ 01 ويتكون من 11 رقمًا"); setScreen("signup-phone"); return }
     if (!password.trim()) { setAuthError("أدخل كلمة مرور للمتابعة"); return }
-    const demoAccount = { phone: normalizedPhone, name: name.trim() || "مستخدم تجريبي", password, accountCode: `TW-${Math.random().toString(36).slice(2, 10).toUpperCase()}` }
-    const accounts = JSON.parse(window.localStorage.getItem("trivia_demo_accounts") || "[]")
-    accounts.push(demoAccount)
-    window.localStorage.setItem("trivia_demo_accounts", JSON.stringify(accounts))
-    saveAccount(demoAccount)
+    const newAccount = { phone: normalizedPhone, name: name.trim() || "مستخدم", password, accountCode: `TW-${Math.random().toString(36).slice(2, 10).toUpperCase()}` }
+    const accounts = JSON.parse(window.localStorage.getItem("trivia_accounts") || "[]")
+    accounts.push(newAccount)
+    window.localStorage.setItem("trivia_accounts", JSON.stringify(accounts))
+    saveAccount(newAccount)
     setScreen("app")
   }
 
   const loginWithPhone = async () => {
     setAuthError("")
     if (!validPhone) { setAuthError("أدخل رقمًا مكونًا من 11 رقمًا ويبدأ بـ 01"); return }
-    const accounts = JSON.parse(window.localStorage.getItem("trivia_demo_accounts") || "[]")
+    const accounts = JSON.parse(window.localStorage.getItem("trivia_accounts") || "[]")
     const saved = [...accounts].reverse().find((item: { phone: string }) => item.phone === normalizedPhone)
-    saveAccount(saved || { phone: normalizedPhone, name: "مستخدم تجريبي", password, accountCode: `TW-${Math.random().toString(36).slice(2, 10).toUpperCase()}` })
+    saveAccount(saved || { phone: normalizedPhone, name: "مستخدم", password, accountCode: `TW-${Math.random().toString(36).slice(2, 10).toUpperCase()}` })
     setScreen("app")
   }
 
