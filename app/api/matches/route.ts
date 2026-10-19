@@ -4,7 +4,7 @@ export async function GET() {
   const key = process.env.API_FOOTBALL_KEY
   if (!key) return NextResponse.json({ error: "API_FOOTBALL_KEY غير مضبوط" }, { status: 503 })
 
-  const response = await fetch("https://v3.football.api-sports.io/fixtures?next=20", {
+  const response = await fetch("https://v3.football.api-sports.io/fixtures?next=100", {
     headers: { "x-apisports-key": key },
     next: { revalidate: 3600 },
   })
