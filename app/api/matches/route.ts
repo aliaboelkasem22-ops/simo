@@ -1,25 +1,31 @@
 import { NextResponse } from "next/server"
 
+type ApiFixture = { fixture: { id: number; date: string; status: { short: string } }; league: { name: string; country: string }; teams: { home: { name: string; logo: string | null }; away: { name: string; logo: string | null } } }
+
 export async function GET() {
   const key = process.env.API_FOOTBALL_KEY
   if (!key) return NextResponse.json({ error: "API_FOOTBALL_KEY غير مضبوط" }, { status: 503 })
 
-  const response = await fetch("https://v3.football.api-sports.io/fixtures?league=233&season=2025", {
-    headers: { "x-apisports-key": key },
-    next: { revalidate: 3600 },
-  })
-  if (!response.ok) return NextResponse.json({ error: "تعذر تحميل مباريات الدوري المصري" }, { status: 502 })
-  const payload = await response.json()
-  const matches = (payload.response ?? []).filter((item: any) => new Date(item.fixture.date) >= new Date()).slice(0, 100).map((item: any) => ({
+  const today = new Date().toISOString().slice(0, 10)
+  const currentSeason = new Date().getUTCFullYear()
+  const headers = { "x-apisports-key": key }
+  const request = (season: number) => fetch(`https://v3.football.api-sports.io/fixtures?league=233&season=${season}&from=${today}&to=${season + 1}-06-30`, { headers, next: { revalidate: 900 } })
+  const response = await request(currentSeason)
+  if (!response.ok) return NextResponse.json({ error: "تعذر تحميل المباريات الحقيقية من مزود البيانات" }, { status: 502 })
+  let payload = await response.json() as { response?: ApiFixture[]; errors?: Record<string, string> }
+  if (payload.errors && Object.keys(payload.errors).length) return NextResponse.json({ error: "رفض مزود البيانات طلب المباريات" }, { status: 502 })
+  if (!payload.response?.length) {
+    const previousResponse = await request(currentSeason - 1)
+    if (previousResponse.ok) payload = await previousResponse.json() as { response?: ApiFixture[]; errors?: Record<string, string> }
+  }
+  const matches = (payload.response ?? []).filter((item) => new Date(item.fixture.date) >= new Date()).slice(0, 100).map((item) => ({
     id: item.fixture.id,
     date: item.fixture.date,
     status: item.fixture.status.short,
-    league: "الدوري المصري الممتاز",
-    country: "مصر",
-    home: { name: item.teams.home.name, logo: item.teams.home.logo },
-    away: { name: item.teams.away.name, logo: item.teams.away.logo },
+    league: item.league.name,
+    country: item.league.country,
+    home: { name: item.teams.home.name, logo: item.teams.home.logo ?? "" },
+    away: { name: item.teams.away.name, logo: item.teams.away.logo ?? "" },
   }))
-  const teams = ["الأهلي", "الزمالك", "بيراميدز", "المصري", "الإسماعيلي", "الاتحاد السكندري", "سموحة", "البنك الأهلي", "سيراميكا كليوباترا", "فاركو", "حرس الحدود", "طلائع الجيش", "الجونة", "إنبي", "زد", "مودرن سبورت", "غزل المحلة", "بتروجيت"]
-  const fallbackMatches = teams.slice(0, -1).map((team, index) => ({ id: 900000 + index, date: new Date(Date.now() + (index + 1) * 86400000).toISOString(), status: "NS", league: "الدوري المصري الممتاز", country: "مصر", home: { name: team, logo: "" }, away: { name: teams[index + 1], logo: "" } }))
-  return NextResponse.json({ matches: matches.length ? matches : fallbackMatches, updatedAt: new Date().toISOString() })
+  return NextResponse.json({ matches, updatedAt: new Date().toISOString(), source: "api-football" })
 }
